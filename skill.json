@@ -1,0 +1,279 @@
+{
+  "languageModel": {
+    "types": [
+      {
+        "name": "Coins",
+        "values": [
+          {
+            "id": "2",
+            "name": {
+              "value": "steem-dollars",
+              "synonyms": [
+                "SBD"
+              ]
+            }
+          },
+          {
+            "id": "1",
+            "name": {
+              "value": "steem",
+              "synonyms": [
+                "STE"
+              ]
+            }
+          },
+          {
+            "id": "0",
+            "name": {
+              "value": "bitcoin",
+              "synonyms": [
+                "BTC"
+              ]
+            }
+          },
+          {
+            "id": null,
+            "name": {
+              "value": "litecoin",
+              "synonyms": [
+                "LTC"
+              ]
+            }
+          },
+          {
+            "id": null,
+            "name": {
+              "value": "ethereum",
+              "synonyms": [
+                "ETH"
+              ]
+            }
+          },
+          {
+            "id": null,
+            "name": {
+              "value": "EOS",
+              "synonyms": [
+                "EOS"
+              ]
+            }
+          },
+          {
+            "id": null,
+            "name": {
+              "value": "Ripple",
+              "synonyms": [
+                "XRP"
+              ]
+            }
+          },
+          {
+            "id": null,
+            "name": {
+              "value": "musicoin",
+              "synonyms": [
+                "music"
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "name": "numeral",
+        "values": [
+          {
+            "id": null,
+            "name": {
+              "value": "first",
+              "synonyms": []
+            }
+          },
+          {
+            "id": null,
+            "name": {
+              "value": "second",
+              "synonyms": []
+            }
+          },
+          {
+            "id": null,
+            "name": {
+              "value": "third",
+              "synonyms": []
+            }
+          },
+          {
+            "id": null,
+            "name": {
+              "value": "fourth",
+              "synonyms": []
+            }
+          },
+          {
+            "id": null,
+            "name": {
+              "value": "fifth",
+              "synonyms": []
+            }
+          },
+          {
+            "id": null,
+            "name": {
+              "value": "sixth",
+              "synonyms": []
+            }
+          },
+          {
+            "id": null,
+            "name": {
+              "value": "seventh",
+              "synonyms": []
+            }
+          },
+          {
+            "id": null,
+            "name": {
+              "value": "eighth",
+              "synonyms": []
+            }
+          },
+          {
+            "id": null,
+            "name": {
+              "value": "ninth",
+              "synonyms": []
+            }
+          },
+          {
+            "id": null,
+            "name": {
+              "value": "tenth",
+              "synonyms": []
+            }
+          }
+        ]
+      }
+    ],
+    "intents": [
+      {
+        "name": "AMAZON.CancelIntent",
+        "samples": [
+          "Cancel"
+        ]
+      },
+      {
+        "name": "AMAZON.HelpIntent",
+        "samples": []
+      },
+      {
+        "name": "AMAZON.StopIntent",
+        "samples": [
+          "Stop"
+        ]
+      },
+      {
+        "name": "PriceCheckIntent",
+        "samples": [
+          "What's the current price of {coin}",
+          "What is the price of {coin}",
+          "Tell me the price of {coin}",
+          "Tell me the USD price of {coin}",
+          "How much does {coin} cost"
+        ],
+        "slots": [
+          {
+            "name": "coin",
+            "type": "Coins",
+            "samples": [
+              "{coin}"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "TrendingCheckIntent",
+        "samples": [
+          "What are the current trending posts",
+          "What are the trending posts",
+          "What posts are trending on steem",
+          "Read trending posts on steem",
+          "Read current trending posts"
+        ],
+        "slots": []
+      },
+      {
+        "name": "TrendingSpecificPostIntent",
+        "samples": [
+          "Read me the {number} trending post",
+          "Read the {number} post"
+        ],
+        "slots": [
+          {
+            "name": "number",
+            "type": "numeral",
+            "samples": [
+              "{number}"
+            ]
+          }
+        ]
+      }
+    ],
+    "invocationName": "steem assistant"
+  },
+  "prompts": [
+    {
+      "id": "Elicit.Intent-PriceCheckIntent.IntentSlot-coin",
+      "variations": [
+        {
+          "type": "PlainText",
+          "value": "Sorry, I did not receive a coin name."
+        }
+      ]
+    },
+    {
+      "id": "Elicit.Intent-TrendingSpecificPostIntent.IntentSlot-number",
+      "variations": [
+        {
+          "type": "PlainText",
+          "value": "Sorry, you need to specify the numeral - like first - between one and ten"
+        }
+      ]
+    }
+  ],
+  "dialog": {
+    "intents": [
+      {
+        "name": "PriceCheckIntent",
+        "confirmationRequired": false,
+        "prompts": {},
+        "slots": [
+          {
+            "name": "coin",
+            "type": "Coins",
+            "elicitationRequired": true,
+            "confirmationRequired": false,
+            "prompts": {
+              "elicitation": "Elicit.Intent-PriceCheckIntent.IntentSlot-coin"
+            }
+          }
+        ]
+      },
+      {
+        "name": "TrendingSpecificPostIntent",
+        "confirmationRequired": false,
+        "prompts": {},
+        "slots": [
+          {
+            "name": "number",
+            "type": "numeral",
+            "elicitationRequired": true,
+            "confirmationRequired": false,
+            "prompts": {
+              "elicitation": "Elicit.Intent-TrendingSpecificPostIntent.IntentSlot-number"
+            }
+          }
+        ]
+      }
+    ]
+  }
+}
