@@ -6,7 +6,9 @@ This is an early version of your personal Steem Assistant developed for Amazon E
 
 ##### Wake command:
 - Alexa, use Steem Assistant
+
 or 
+
 - Alexa, ask Steem Assistant <command>
 
 ##### Current Intentions (Commands):
