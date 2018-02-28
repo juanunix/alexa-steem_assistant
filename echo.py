@@ -1,13 +1,11 @@
 from flask import Flask
 from flask_ask import Ask, statement, question, session
-import json, requests, time
-from coinmarketcap import Market
+import json, requests, time, random
 from steem import Steem
 from steem.account import Account
 from steem.instance import set_shared_steemd_instance
 from steem.steemd import Steemd
 
-cmc = Market()
 session = requests.Session()
 app = Flask(__name__)
 ask = Ask(app, "/steem_assistant")
@@ -28,6 +26,27 @@ def session_post(url, post):
 
 	return session.post(url, data = post, headers = headers, timeout = 30)
 
+# Is used to read out information about specific posts.
+def read_post(index, data, name):
+	data = data[index-1]
+	title = data['title'].replace('@', '')
+	author = data['author']
+	tags_list = json.loads(data['json_metadata'])['tags']
+	tags = ', '.join(tags_list[:-1])
+	if len(tags_list) > 1:
+		tags = tags + ", and " + str(tags_list[-1])
+		amount = "tags"
+	else:
+		tags = tags_list[0]
+		amount = "tag"
+	votes = data['net_votes']
+	comments = data['children']
+	payout = data['pending_payout_value'].replace('SBD', '').rstrip('0').rstrip('.')
+
+	response = "The %s is: %s, by %s. It's been posted under the following %s: %s... It has gathered a total of %s upvotes with a value of %s Steem Dollars, and has been commented on %s times." %(name, title, author, amount, tags, votes, payout, comments)
+
+	return response
+
 ### ### ### ### ### ### ### ### ### ### THIS IS WHERE FLASK DECORATED FUNCTIONS START ### ### ### ### ### ### ### ### ### ### 
 
 @app.route('/')
@@ -42,10 +61,8 @@ def start_skill():
 	return question(welcome_msg)
 
 # Read outs the top 10 posts on /trending (their titles & authors)
-@ask.intent("TrendingCheckIntent")
-def check_trending_posts():
-	data = s.get_discussions_by_trending({"limit":"10"})
-
+@ask.intent("TopCheckIntent")
+def check_trending_posts(category):
 	posts = {}
 	for _ in range(len(data)):
 		posts[data[_]["title"]] = data[_]["author"]
@@ -55,34 +72,60 @@ def check_trending_posts():
 		added_str = '. . . . .%s... ,by %s...' %(post, posts[post])
 		response_str += added_str
 
-	response = "The current trending posts on steem are: %s" %(response_str)
+	try:
+		if category.lower() == "trending":
+			data = s.get_discussions_by_trending({"limit":"10"})
+		elif category.lower() == "hot":
+			data = s.get_discussions_by_hot({'limit':'10'})
+		else:
+			data = s.get_discussions_by_created({"limit":'10'})
+			category = "new"
+
+		response = "The current %s posts on steem are: %s" %(category, response_str)
+	except (TypeError, AttributeError):
+		return statement("Sorry, I did not hear you clearly or you didn't provide enough arguments. Please try again.")
 
 	return statement(response)
 
-# Reads out specific post from top 10 on /trending (title & author)
-@ask.intent("TrendingSpecificPostIntent")
-def read_trending_post(number):
-	numbers_dict = {
-	"1st" : 1,
-	"2nd" : 2,
-	"3rd" : 3,
-	"4th" : 4,
-	"5th" : 5,
-	"6th" : 6,
-	"7th" : 7,
-	"8th" : 8,
-	"9th" : 9,
-	"10th" : 10,
-	}
+# Reads out specific post from top 10 on /trending, /hot or /created (title & author)
+@ask.intent("SpecificPostIntent")
+def get_trending_post(number, category):
+	numbers_dict = {"1st" : 1,"2nd" : 2,"3rd" : 3,"4th" : 4,"5th" : 5,"6th" : 6,"7th" : 7,"8th" : 8,"9th" : 9,"10th" : 10}
 
-	data = s.get_discussions_by_trending({"limit":"10"})
-	index = numbers_dict[number]
-	title = data[index-1]['title']
-	author = data[index-1]['author']
+	try:
+		response_str = str(number + " post from " + category)
+		index = numbers_dict[number]
+		if category.lower() == "trending":
+			data = s.get_discussions_by_trending({"limit":"10"})
+		elif category.lower() == "hot":
+			data = s.get_discussions_by_hot({'limit':'10'})
+		else:
+			data = s.get_discussions_by_created({"limit":'10'})
+			response_str = str(number + " post on steem ")
+	except (TypeError, AttributeError):
+		return statement("Sorry, I did not hear you clearly or you didn't provide enough arguments. Please try again.")
+	
 
-	response = "The %s post is %s, by %s" %(number,title,author)
+	return statement(read_post(index, data, response_str))
 
-	return statement(response)
+# Reads out a random post from a new, hot or trending. 
+@ask.intent("LuckyPostIntent")
+def read_lucky_post(category):
+	try:
+		response_str = str("Lucky post from " + category)
+		if category.lower() == "trending":
+			data = s.get_discussions_by_trending({"limit":"100"})
+		elif category.lower() == "hot":
+			data = s.get_discussions_by_hot({'limit':'100'})
+		else:
+			data = s.get_discussions_by_created({"limit":'100'})
+			response_str = str("Lucky post ")
+	except (TypeError, AttributeError):
+		return statement("Sorry, I did not hear you clearly or you didn't provide enough arguments. Please try again.")
+
+	index = random.randint(0,100)
+
+	return statement(read_post(index, data, response_str))
 
 # Returns a price of a given coin.
 @ask.intent("PriceCheckIntent")
