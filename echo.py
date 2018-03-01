@@ -137,7 +137,8 @@ def check_price(coin):
 	for x in data:
 		if x['id'] == coin or x['symbol'].lower() == coin:
 			price = x['price_usd']
-			price = round(float(price),2)
+			if float(price) > 1:
+				price = round(float(price),2)
 			name = x['name']
 			change = x['percent_change_24h']
 			rank = x['rank']
