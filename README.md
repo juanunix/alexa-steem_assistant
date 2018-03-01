@@ -5,7 +5,7 @@ Steem Assistant is copyrighted under the MIT LICENSE by Victor Metryka © 2018.
 Go to developer.amazon.com and set your endpoint to https://steem-assistant.herokuapp.com/steem_assistant ! I'll pay for the hosting. All feedback is welcome!
 
 ### What is Steem Assistant?
-This is an early version of your personal Steem Assistant, a voice interface for steem blockchain, developed for Amazon Echo.
+This is an early version of your personal Steem Assistant, a voice interface for the steem blockchain, developed for Amazon Echo.
 
 ##### Wake command:
 - Alexa, use Steem
