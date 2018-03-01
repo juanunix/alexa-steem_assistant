@@ -15,6 +15,8 @@ or
 - Alexa, ask Steem <command>
 
 ##### Current Intentions (Commands):
+The specific spelling can vary - you don't need to spell it exactly like it's written here, Alexa is smart enough to still get your intention!
+
 - What's the current price of \<coin> (top 500 coins on coinmarketcap).
 - Read the \<category> posts on steem (trending/hot/new).
 - Read the \<numeral>(ex. 1st) post on \<category>.
