@@ -12,7 +12,7 @@ This is an early version of your personal Steem Assistant, a voice interface for
 
 or 
 
-- Alexa, ask Steem <command>
+- Alexa, ask Steem \<command>
 
 ##### Current Intentions (Commands):
 The specific spelling can vary - you don't need to spell it exactly like it's written here, Alexa is smart enough to still get your intention!
