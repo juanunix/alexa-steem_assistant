@@ -1,0 +1,5 @@
+steem==0.18.103
+requests==2.18.4
+flask==0.12.2
+flask_ask==0.9.7
+gunicorn==19.7.1
