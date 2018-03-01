@@ -137,15 +137,26 @@ def check_price(coin):
 	for x in data:
 		if x['id'] == coin or x['symbol'].lower() == coin:
 			price = x['price_usd']
+			price = round(float(price),2)
 			name = x['name']
+			change = x['percent_change_24h']
+			rank = x['rank']
+			if rank[-1] == "1":
+				rank = str(rank+"st place ")
+			elif rank[-1] == "2":
+				rank = str(rank+"nd place ")
+			elif rank[-1] == "3":
+				rank = str(rank+"rd place ")
+			else:
+				rank = str(rank+"th place ")
 			available = True
 			break
 		else:
 			available = False
 	if available:	
-		response = "The current price of %s is %s USD" %(name, price)
+		response = "The current price of %s is %s USD and is ranked at %s. In the last 24h it's price has changed by %s percent." %(name, price, rank, change)
 	else:
-		response = "The coin you've asked for doesn't exist or is unavailable. Sorry."
+		response = "The coin you've asked for doesn't exist or is not supported. Sorry."
 
 	return statement(response)
 
