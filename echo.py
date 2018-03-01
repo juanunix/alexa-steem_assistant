@@ -156,7 +156,7 @@ def check_price(coin):
 	if available:	
 		response = "The current price of %s is %s USD and is ranked at %s. In the last 24h it's price has changed by %s percent." %(name, price, rank, change)
 	else:
-		response = "The coin you've asked for doesn't exist or is not supported. Sorry."
+		response = "I don't think I got the name correct. Try to give me the symbol of the coin rather than it's name to see if that works."
 
 	return statement(response)
 
