@@ -15,10 +15,10 @@ or
 - Alexa, ask Steem <command>
 
 ##### Current Intentions (Commands):
-- What's the current price of <coin> (top 500 coins on coinmarketcap).
-- Read the <category> posts on steem (trending/hot/new).
-- Read the <numeral>(ex. 1st) post on <category>.
-- Read a lucky post from <category>.
+- What's the current price of \<coin> (top 500 coins on coinmarketcap).
+- Read the \<category> posts on steem (trending/hot/new).
+- Read the \<numeral>(ex. 1st) post on \<category>.
+- Read a lucky post from \<category>.
   
 ##### Contact Information
 Contact me on Discord at Jestemkioskiem#5566
