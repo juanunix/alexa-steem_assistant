@@ -19,12 +19,101 @@ steemd_nodes = [
 ]
 set_shared_steemd_instance(Steemd(nodes=steemd_nodes)) # set backup API nodes
 
+nickname = "ned" # THIS WILL BE INTEGRATED WITH STEEMCONNECT WHEN I GET A HOLD OF HOW TO USE IT, FOR NOW, FOR TESTING PURPOSES, THE NICKNAME IS HARDCODED.
+
+class SteemUser:
+
+	def __init__(self, username):
+		self.username = username
+		self.session = Account(self.username, steemd_instance=s)
+
+		self.wallet = {
+		"steem_balance" : float(self.session['balance'].replace('STEEM', '')),
+		"sbd_balance" : float(self.session['sbd_balance'].replace('SBD', '')),
+		"vests" : float(self.session['vesting_shares'].replace('VESTS', '')),
+		"delegated_vests" : float(self.session['received_vesting_shares'].replace('VESTS', '')) - float(self.session['delegated_vesting_shares'].replace('VESTS', '')),
+		"delegated_vesting_shares" : float(self.session['delegated_vesting_shares'].replace('VESTS', '')),
+		"received_vesting_shares" : float(self.session['received_vesting_shares'].replace('VESTS', '')),
+		"voting_power" : float(self.session['voting_power'] / 100)
+		}
+
+		self.wallet['acc_value'] = self.calculate_estimated_acc_value()
+		self.wallet['upvote'] = self.calculate_estimated_upvote()
+		self.wallet['delegations'] = self.calculate_steem_power()['delegations']
+		self.wallet['sp_balance'] = self.calculate_steem_power()['sp_balance']
+
+	# Is used to calculate steem power of a given user based on their vests.
+	def calculate_steem_power(self):
+
+		post = '{"id":1,"jsonrpc":"2.0","method":"get_dynamic_global_properties", "params": []}'
+		response = session_post('https://api.steemit.com', post)
+		data = json.loads(response.text)
+		data = data['result']
+
+		total_vesting_fund_steem = float(data['total_vesting_fund_steem'].replace('STEEM', ''))
+		total_vesting_shares = float(data['total_vesting_shares'].replace('VESTS', ''))
+
+		sp_dict = {
+		"sp_balance" : round(total_vesting_fund_steem * (self.wallet['vests']/total_vesting_shares), 2),
+		"delegations" : round(total_vesting_fund_steem * (self.wallet['delegated_vests']/total_vesting_shares), 2)
+		}
+
+		return sp_dict
+
+	# Is used to calculate the estimated account value of a given user.
+	def calculate_estimated_acc_value(self):
+		response = requests.get("https://api.coinmarketcap.com/v1/ticker/?limit=500")
+		data = json.loads(response.text)
+		for x in data:
+			if x['id'] == "steem":
+				steem_price = x['price_usd']
+				if float(steem_price) > 1:
+					steem_price = round(float(steem_price),2)
+			elif x['id'] == "steem-dollars":
+				sbd_price = x['price_usd']
+				if float(sbd_price) > 1:
+					sbd_price = round(float(sbd_price),2)
+
+		outcome = round(((self.calculate_steem_power()['sp_balance'] + self.wallet['steem_balance']) * steem_price ) + (self.wallet['sbd_balance'] * sbd_price), 2)
+
+		return str(outcome) + " USD"
+
+	# Is used to calculate the estimated upvote of a given user.
+	def calculate_estimated_upvote(self):
+		reward_fund = s.get_reward_fund()
+		sbd_median_price = get_current_median_history_price()
+		vests = float(self.session['vesting_shares'].replace('VESTS', '')) + float(self.session['received_vesting_shares'].replace('VESTS', '')) - float(self.session['delegated_vesting_shares'].replace('VESTS', ''))
+		vestingShares = int(vests * 1e6);
+		rshares = 0.02 * vestingShares
+		estimated_upvote = rshares / float(reward_fund['recent_claims']) * float(reward_fund['reward_balance'].replace('STEEM', '')) * sbd_median_price
+			
+		return estimated_upvote
+
+#################################################
+# This is where Alexa unrelated functions begin #
+#################################################
+
 def session_post(url, post):
 	headers = {
 		'User-Agent': 'Steem-Assistant'
 	}
 
 	return session.post(url, data = post, headers = headers, timeout = 30)
+
+# Gets median history price of SBD from the steem blockchain. Necessary for calculating relation between SP and vests.
+def get_current_median_history_price():
+	price = 0.0
+
+	data = '{"id":1,"jsonrpc":"2.0","method":"get_current_median_history_price"}'
+	response = session_post('https://api.steemit.com', data)
+	data = json.loads(response.text)
+	
+	if 'result' in data:
+		price = float(data['result']['base'].replace('SBD', ''))		
+	else:
+		raise Exception('Couldnt get the SBD price!')
+	
+	return price
 
 # Is used to read out information about specific posts.
 def read_post(index, data, name):
@@ -47,7 +136,9 @@ def read_post(index, data, name):
 
 	return response
 
-### ### ### ### ### ### ### ### ### ### THIS IS WHERE FLASK DECORATED FUNCTIONS START ### ### ### ### ### ### ### ### ### ### 
+###############################################
+# This is where alexa related functions begin #
+###############################################
 
 @app.route('/')
 def homepage():
@@ -59,6 +150,52 @@ def start_skill():
 	welcome_msg = 'Welcome to Steem Assistant, what can I assist you with?'
 
 	return question(welcome_msg)
+
+# Reads out the information about the user's wallet
+@ask.intent("WalletIntent")
+def check_wallet():
+	user = SteemUser(nickname)
+	steem_balance = str(user.wallet['steem_balance']) + " STEEM"
+	sbd_balance = str(user.wallet['sbd_balance']) + " Steem Dollars"
+	sp_balance = str(user.wallet['sp_balance']) + " Steem Power"	
+	acc_value = str(user.wallet['acc_value'])
+
+	response = "Currently, in your wallet you've got: %s, %s, %s. Your estimated account value is %s." % (steem_balance, sbd_balance, sp_balance, acc_value)
+	return statement(response)
+
+# Reads out a specific thing from the user's wallet
+@ask.intent("SpecificWalletIntent")
+def check_one_from_wallet(item):
+	user = SteemUser(nickname)
+
+	if item == "steem":
+		name = "steem_balance"
+		response_name = "steem"
+	elif item == "sbd" or item == "steem dollars":
+		name = "sbd_balance"
+		response_name = "steem dollars"
+	elif item == "sp" or item == "steem power":
+		name = "sp_balance"
+		response_name = "steem power"
+	elif item == "voting power":
+		name = "voting_power"
+		response_name = "voting power"
+	elif item == "delegations":
+		name = "delegations"
+		response_name = "steem power in delegations"
+	elif item == "account value":
+		response = "Your estimated account value is equal to %s USD." % (user.wallet["acc_value"])
+		return statement(reponse)
+	elif item == "upvote":
+		response = "Your estimated upvote is equal to %s Steem Dollars." % (round(user.wallet["upvote"],2))
+		return statement(response)
+	else:
+		 name, response_name = item, item
+
+
+	response = "You currently have %s %s ." %(user.wallet[name], response_name)
+	return statement(response)
+
 
 # Read outs the top 10 posts on /trending (their titles & authors)
 @ask.intent("TopCheckIntent")
@@ -162,4 +299,4 @@ def check_price(coin):
 	return statement(response)
 
 if __name__ == '__main__':
-	app.run(port=80)
+	app.run(port=8000)
