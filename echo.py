@@ -62,18 +62,7 @@ class SteemUser:
 
 	# Is used to calculate the estimated account value of a given user.
 	def calculate_estimated_acc_value(self):
-		response = requests.get("https://api.coinmarketcap.com/v1/ticker/?limit=500")
-		data = json.loads(response.text)
-		for x in data:
-			if x['id'] == "steem":
-				steem_price = x['price_usd']
-				if float(steem_price) > 1:
-					steem_price = round(float(steem_price),2)
-			elif x['id'] == "steem-dollars":
-				sbd_price = x['price_usd']
-				if float(sbd_price) > 1:
-					sbd_price = round(float(sbd_price),2)
-
+		steem_price, sbd_price = check_prices('steem', 'steem-dollars')
 		outcome = round(((self.calculate_steem_power()['sp_balance'] + self.wallet['steem_balance']) * steem_price ) + (self.wallet['sbd_balance'] * sbd_price), 2)
 
 		return str(outcome) + " USD"
@@ -89,6 +78,25 @@ class SteemUser:
 			
 		return estimated_upvote
 
+	# Calculates estimated payout for the given user, for the maximum of 20 last posts & 50 comments.
+	def calculate_estimated_payout(self):
+		payout_value = 0
+		posts = s.get_discussions_by_blog({'tag':self.username, 'limit':'20'})
+		for index in range(len(posts)):
+			post = posts[index]
+			if post['author'] == self.username:
+				payout = post['pending_payout_value']
+				payout_value += float(payout.replace(" SBD", ""))
+		comments = s.get_discussions_by_comments({'start_author':self.username, 'limit':'50'})
+		for index in range(len(comments)):
+			post = comments[index]
+			if post['author'] == self.username:
+				payout = post['pending_payout_value']
+				payout_value += float(payout.replace(" SBD", ""))
+		return calculate_author_payout(payout_value, curation=post['allow_curation_rewards'])
+
+
+
 #################################################
 # This is where Alexa unrelated functions begin #
 #################################################
@@ -99,6 +107,33 @@ def session_post(url, post):
 	}
 
 	return session.post(url, data = post, headers = headers, timeout = 30)
+
+# Calculates author payout in USD, SBD and SP respectively, then returns them.
+def calculate_author_payout(value, curation=True):
+	steem_price, sbd_price = check_prices('steem', 'steem-dollars')
+	if curation:
+		value *= 0.75
+
+	sbd_payout = round(value/2, 3)
+	sp_payout = round(sbd_payout / steem_price, 3)
+	value = round(sbd_payout * sbd_price + sp_payout * steem_price, 2)
+
+	return value, sbd_payout, sp_payout
+
+# Checks prices of Steem & SBD respectively, returns them in a tuple.
+def check_prices(*args):
+	response = requests.get("https://api.coinmarketcap.com/v1/ticker/?limit=500")
+	data = json.loads(response.text)
+	coins = []
+	for coin in args:
+		for x in data:
+			if x['id'].lower() == coin.lower() or x['symbol'].lower() == coin.lower():
+				ph_dict = {}
+				ph_dict['name'] = x['id']
+				ph_dict['price'] = x['price_usd']
+				coins.append(ph_dict)
+
+	return coins
 
 # Gets median history price of SBD from the steem blockchain. Necessary for calculating relation between SP and vests.
 def get_current_median_history_price():
@@ -196,6 +231,23 @@ def check_one_from_wallet(item):
 	response = "You currently have %s %s ." %(user.wallet[name], response_name)
 	return statement(response)
 
+@ask.intent("PotentialPayoutIntent")
+def check_potential_payout():
+	user = SteemUser(nickname)
+	usd, steem, sbd = user.calculate_estimated_payout()
+	return statement("Your potential payout is: %s Steem Dollars and %s Steem Power. That's about %s USD." % (sbd, steem, usd))
+
+@ask.intent("ConvertCoinIntent")
+def check_converted_price(coin, second_coin, amount):
+	if not amount:
+		amount = 1
+	amount = float(amount)
+	data = check_prices(coin, second_coin)
+	first_price, second_price = float(data[0]['price']), float(data[1]['price'])
+	conv_rate = first_price/second_price
+	value = amount * conv_rate
+
+	return statement("You can receive around %s %s for %s %s" %(round(value, 4), data[1]['name'], int(amount), data[0]['name']))
 
 # Read outs the top 10 posts on /trending (their titles & authors)
 @ask.intent("TopCheckIntent")
@@ -278,21 +330,12 @@ def check_price(coin):
 				price = round(float(price),2)
 			name = x['name']
 			change = x['percent_change_24h']
-			rank = x['rank']
-			if rank[-1] == "1":
-				rank = str(rank+"st place ")
-			elif rank[-1] == "2":
-				rank = str(rank+"nd place ")
-			elif rank[-1] == "3":
-				rank = str(rank+"rd place ")
-			else:
-				rank = str(rank+"th place ")
 			available = True
 			break
 		else:
 			available = False
 	if available:	
-		response = "The current price of %s is %s USD and is ranked at %s. In the last 24h it's price has changed by %s percent." %(name, price, rank, change)
+		response = "The current price of %s is %s USD . In the last 24h it's price has changed by %s percent." %(name, price, change)
 	else:
 		response = "I don't think I got the name correct. Try to give me the symbol of the coin rather than it's name to see if that works."
 
