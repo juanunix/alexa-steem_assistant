@@ -63,6 +63,7 @@ class SteemUser:
 	# Is used to calculate the estimated account value of a given user.
 	def calculate_estimated_acc_value(self):
 		steem_price, sbd_price = check_prices('steem', 'steem-dollars')
+		steem_price, sbd_price = steem_price['price'], sbd_price['price']
 		outcome = round(((self.calculate_steem_power()['sp_balance'] + self.wallet['steem_balance']) * steem_price ) + (self.wallet['sbd_balance'] * sbd_price), 2)
 
 		return str(outcome) + " USD"
@@ -111,6 +112,7 @@ def session_post(url, post):
 # Calculates author payout in USD, SBD and SP respectively, then returns them.
 def calculate_author_payout(value, curation=True):
 	steem_price, sbd_price = check_prices('steem', 'steem-dollars')
+	steem_price, sbd_price = steem_price['price'], sbd_price['price']
 	if curation:
 		value *= 0.75
 
@@ -130,7 +132,7 @@ def check_prices(*args):
 			if x['id'].lower() == coin.lower() or x['symbol'].lower() == coin.lower():
 				ph_dict = {}
 				ph_dict['name'] = x['id']
-				ph_dict['price'] = x['price_usd']
+				ph_dict['price'] = float(x['price_usd'])
 				coins.append(ph_dict)
 
 	return coins
@@ -235,6 +237,8 @@ def check_one_from_wallet(item):
 def check_potential_payout():
 	user = SteemUser(nickname)
 	usd, steem, sbd = user.calculate_estimated_payout()
+	if usd == 0:
+		return statement("You have no potential payout. Try posting & commenting more.")
 	return statement("Your potential payout is: %s Steem Dollars and %s Steem Power. That's about %s USD." % (sbd, steem, usd))
 
 @ask.intent("ConvertCoinIntent")
@@ -243,7 +247,7 @@ def check_converted_price(coin, second_coin, amount):
 		amount = 1
 	amount = float(amount)
 	data = check_prices(coin, second_coin)
-	first_price, second_price = float(data[0]['price']), float(data[1]['price'])
+	first_price, second_price = data[0]['price'], data[1]['price']
 	conv_rate = first_price/second_price
 	value = amount * conv_rate
 
